@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoCDA - Verify Access Code</title>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+    body {
+      margin: 0;
+      font-family: 'Inter', system-ui, sans-serif;
+      background: linear-gradient(135deg, #0f766e, #164e63);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(12px);
+      padding: 50px 40px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      max-width: 460px;
+      width: 90%;
+    }
+
+    /* Inputs and buttons */
+    input[type="text"]{ width:100%; padding:14px; border-radius:10px; border:none; background:white; color:#0f766e; font-weight:600; font-size:1.8rem; letter-spacing:14px; box-sizing:border-box }
+    input[type="text"]:focus{ outline:4px solid rgba(245,158,11,0.14) }
+    button{ width:100%; border-radius:12px }
+
+    /* result and verified card */
+    #result{ min-height:56px; margin-top:18px }
+    #verifiedCard{ max-width:420px; margin:18px auto 0 auto }
+    #verifiedCard div{ text-align:left }
+    #v_name{ font-size:1.2rem; font-weight:700 }
+    #v_street{ margin-top:6px; opacity:0.9 }
+
+    @media (max-width:420px){
+      input[type="text"]{ font-size:1.6rem; letter-spacing:12px }
+    }
+
+    .logo {
+      font-size: 2.8rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      letter-spacing: -1px;
+    }
+
+    .subtitle {
+      font-size: 1.1rem;
+      opacity: 0.9;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      margin-bottom: 15px;
+    }
+
+    input {
+      width: 100%;
+      font-size: 2.4rem;
+      text-align: center;
+      letter-spacing: 15px;
+      padding: 20px 15px;
+      border: none;
+      border-radius: 16px;
+      background: white;
+      color: #0f766e;
+      font-weight: 600;
+      margin: 20px 0;
+    }
+
+    input:focus {
+      outline: 4px solid #f59e0b;
+    }
+
+    button {
+      background: #f59e0b;
+      color: white;
+      border: none;
+      padding: 16px 40px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      cursor: pointer;
+      width: 100%;
+      margin: 10px 0;
+      transition: all 0.3s;
+    }
+
+    button:hover {
+      background: #d97706;
+      transform: translateY(-2px);
+    }
+
+    #scannerContainer {
+      margin: 25px 0;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    #result {
+      margin-top: 30px;
+      font-size: 1.5rem;
+      font-weight: 500;
+      min-height: 80px;
+    }
+
+    .success { color: #4ade80; }
+    .error { color: #f87171; }
+
+    .note {
+      margin-top: 30px;
+      font-size: 0.95rem;
+      opacity: 0.85;
+      line-height: 1.5;
+    }
+
+    .footer {
+      margin-top: 40px;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">VICDA</div>
+    <p class="subtitle">Vision Community Development Association</p>
+
+    <h2>Verify Access Code</h2>
+    <p>Enter the 6-digit code or scan the QR code</p>
+
+    <!-- Camera Scanner -->
+    <button onclick="toggleScanner()" id="scanBtn">📷 Start Camera Scanner</button>
+
+    <div id="scannerContainer" style="display: none;">
+      <div id="scanner"></div>
+    </div>
+
+    <p style="margin: 25px 0; opacity: 0.8;">— OR —</p>
+
+    <!-- Manual Input -->
+    <input type="text" id="codeInput" maxlength="6" placeholder="000000" autocomplete="off">
+
+    <button onclick="manualVerify()">Verify Code</button>
+
+    <div id="result"></div>
+
+    <div id="verifiedCard" style="display:none; margin-top:18px; text-align:left; max-width:420px; margin-left:auto; margin-right:auto;">
+      <div style="background:white; color:#064e3b; padding:18px; border-radius:12px; box-shadow:0 8px 20px rgba(0,0,0,0.15);">
+        <div style="font-size:1.05rem; font-weight:700; margin-bottom:6px;"><strong style="display:inline-block; width:80px;">Name:</strong> <span id="v_name"></span></div>
+        <div style="font-size:1rem; opacity:0.85;"><strong style="display:inline-block; width:80px;">Street:</strong> <span id="v_street"></span></div>
+        <div style="margin-top:8px; font-size:0.85rem; color:#065f46; opacity:0.9;" id="v_meta"></div>
+      </div>
+    </div>
+
+    <p class="note">
+      This verification checks the currently active code generated from the generator page.<br>
+      Codes are valid for 3 hours only.
+    </p>
+
+    <div class="footer">
+      &copy; 2026 Vision Community Development Association<br>
+      Lagos, Nigeria
+    </div>
+  </div>
+
+  <script>
+    let html5QrCodeScanner = null;
+
+    // ====================== QR SCANNER ======================
+    function toggleScanner() {
+      const container = document.getElementById('scannerContainer');
+      const btn = document.getElementById('scanBtn');
+
+      if (!html5QrCodeScanner) {
+        // Start scanner
+        html5QrCodeScanner = new Html5QrcodeScanner(
+          "scanner",
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          false
+        );
+
+        html5QrCodeScanner.render(onScanSuccess, onScanError);
+        container.style.display = 'block';
+        btn.textContent = 'Stop Camera Scanner';
+      } else {
+        // Stop scanner
+        stopScanner();
+      }
+    }
+
+    function stopScanner() {
+      if (html5QrCodeScanner) {
+        html5QrCodeScanner.clear().then(() => {
+          document.getElementById('scannerContainer').style.display = 'none';
+          document.getElementById('scanBtn').textContent = '📷 Start Camera Scanner';
+          html5QrCodeScanner = null;
+        });
+      }
+    }
+
+    function onScanSuccess(decodedText) {
+      document.getElementById('codeInput').value = decodedText.trim();
+      verifyCode(decodedText.trim());
+      stopScanner();
+    }
+
+    function onScanError() {
+      // Silent handling
+    }
+
+    // ====================== MANUAL VERIFICATION ======================
+    function manualVerify() {
+      const inputCode = document.getElementById('codeInput').value.trim();
+      
+      if (inputCode.length !== 6 || isNaN(inputCode)) {
+        showResult("Please enter a valid 6-digit code", "error");
+        return;
+      }
+      
+      verifyCode(inputCode);
+    }
+
+    async function verifyCode(inputCode) {
+      try {
+        const response = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: inputCode })
+        });
+
+        if (!response.ok) {
+          throw new Error('Verify request failed');
+        }
+
+        const data = await response.json();
+
+        if (data.valid) {
+          const name = data.meta && data.meta.name ? data.meta.name : '';
+          const street = data.meta && data.meta.street ? data.meta.street : '';
+          showResult("✓ Access Granted!", "success");
+
+          document.getElementById('v_name').textContent = name;
+          document.getElementById('v_street').textContent = street;
+          document.getElementById('v_meta').textContent = `Verified at ${new Date(data.expiresAt).toLocaleString()}`;
+          document.getElementById('verifiedCard').style.display = 'block';
+
+          return;
+        }
+
+        if (data.reason === 'no_code') {
+          showResult("No active code has been generated yet.<br>Please generate a code first.", "error");
+          return;
+        }
+
+        if (data.reason === 'expired') {
+          showResult("This code has expired.<br>Please generate a new code.", "error");
+          return;
+        }
+
+        if (data.reason === 'format') {
+          showResult("Please enter a valid 6-digit code", "error");
+          return;
+        }
+
+        showResult("✗ Invalid or Expired Code", "error");
+      } catch (error) {
+        showResult("Server unavailable. Please try again.", "error");
+      }
+    }
+
+    function showResult(message, type) {
+      document.getElementById('result').innerHTML = `<span class="${type}">${message}</span>`;
+    }
+
+    // Allow pressing Enter key to verify
+    document.getElementById('codeInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        manualVerify();
+      }
+    });
+
+    // Show helpful message on load
+    window.onload = () => {
+      console.log("%cVICDA Verify Page Ready - Use with VICDAindex.html", "color: #fbbf24; font-weight: bold");
+    };
+  </script>
+</body>
+</html>
