@@ -100,23 +100,18 @@ app.post('/api/verify', (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'VICDAindex.html'));
+  res.sendFile(path.join(__dirname, 'index.html'));
 });
 
 app.get('/verify', (req, res) => {
-  res.sendFile(path.join(__dirname, 'Vicdaverify.html'));
+  res.sendFile(path.join(__dirname, 'verify.html'));
 });
 
 app.use(express.static(__dirname));
 
-// load persisted data
+// load persisted data then start
 loadData();
 
-// Export the app for serverless platforms (or tests). When run directly, start the listener.
-module.exports = app;
-
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`VICDA server running on http://localhost:${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`VICDA server running on http://localhost:${PORT}`);
+});

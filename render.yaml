@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: vicda-access-code
+    env: node
+    plan: starter
+    region: oregon
+    branch: main
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    disk: 512
